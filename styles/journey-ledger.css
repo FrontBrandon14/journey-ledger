@@ -1,0 +1,1364 @@
+      .application.journey-ledger {
+        --jl-bg: #f4ecd8;
+        --jl-bg-deep: #ead9b4;
+        --jl-border: #6b4f2a;
+        --jl-border-soft: rgba(107,79,42,0.35);
+        --jl-header: #3e2a17;
+        --jl-gold: #c9a227;
+        --jl-body: #2b1d0e;
+        --jl-button: #5a3e24;
+        --jl-button-hover: #7a5732;
+        --jl-danger: #a02020;
+        --jl-success: #426a2a;
+
+        background: var(--jl-bg);
+        color: var(--jl-body);
+        font-family: "Cinzel", serif;
+        border: 2px solid var(--jl-border);
+        border-radius: 6px;
+        box-shadow: 0 0 24px rgba(0,0,0,0.45), inset 0 0 60px rgba(160,120,60,0.12);
+      }
+      .application.journey-ledger .window-header {
+        background: linear-gradient(180deg, #2b1d0e 0%, #4a3320 100%);
+        color: var(--jl-gold);
+        border-bottom: 2px solid var(--jl-gold);
+        font-family: "IM Fell English SC", serif;
+      }
+      .application.journey-ledger .window-header .window-title {
+        font-family: "IM Fell English SC", serif;
+        font-size: 1.3rem;
+        color: var(--jl-gold);
+        text-shadow: 0 0 6px rgba(201,162,39,0.4);
+        letter-spacing: 0.08em;
+      }
+      .application.journey-ledger .window-content {
+        background:
+          radial-gradient(circle at 20% 10%, rgba(255,240,200,0.6), transparent 50%),
+          radial-gradient(circle at 80% 90%, rgba(120,80,30,0.18), transparent 60%),
+          var(--jl-bg);
+        padding: 0;
+        color: var(--jl-body);
+        overflow: hidden;
+      }
+
+      /* Day-banner (resources, new-day button) */
+      .journey-ledger .jl-banner {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        padding: 6px 14px;
+        border-bottom: 1px solid var(--jl-gold);
+        background: rgba(245,235,210,0.6);
+        font-family: "IM Fell English SC", serif;
+      }
+      .journey-ledger .jl-banner .jl-banner-title {
+        font-size: 1.1rem;
+        color: var(--jl-header);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .journey-ledger .jl-banner input.jl-day-name {
+        background: rgba(255,252,238,0.85);
+        border: 1px solid var(--jl-border);
+        color: var(--jl-body);
+        font-family: "Cinzel", serif;
+        font-size: 0.95rem;
+        padding: 2px 6px;
+        border-radius: 3px;
+        min-width: 220px;
+      }
+      .journey-ledger .jl-banner .jl-cost-pills {
+        display: flex;
+        gap: 8px;
+        font-size: 0.92rem;
+      }
+      .journey-ledger .jl-banner .jl-pill {
+        background: var(--jl-bg-deep);
+        border: 1px solid var(--jl-border);
+        border-radius: 12px;
+        padding: 2px 10px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-family: "Cinzel", serif;
+      }
+      .journey-ledger .jl-banner .jl-actions {
+        display: flex;
+        gap: 6px;
+      }
+
+      /* Trip progress bar
+         Structure:
+           .jl-progress-wrap (horizontal flex, banner cell)
+             .jl-progress-stack (vertical flex, holds bar + subtitle)
+               .jl-progress-bar (positioning wrapper, overflow: visible so
+                                 milestone flags + labels can stick out)
+                 .jl-progress-track (overflow: hidden — clips the moving fill)
+                   .jl-progress-fill (animated green fill)
+                   .jl-progress-text (centered "X / Y h · Z%" label)
+                 .jl-ms × N (absolute-positioned milestone marker)
+               .jl-progress-subtitle (current leg "Carrefour → Pont · 4/14 h")
+             .jl-progress-edit (pencil button) */
+      .journey-ledger .jl-progress-wrap {
+        flex: 1 1 auto;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 260px;
+        max-width: 1120px;
+        margin: 0 12px;
+        /* Vertical breathing room for absolute-positioned markers:
+             top    — Destination flag floats at top: -22px (≈26px tall)
+             bottom — far-tier label pill sits ~19px below bar + ~17px chip */
+        padding: 28px 0 42px 0;
+      }
+      .journey-ledger .jl-progress-stack {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 0;
+      }
+      .journey-ledger .jl-progress-bar {
+        position: relative;
+        height: 26px;
+        cursor: pointer;
+        /* No clipping here — the track does it. */
+      }
+      .journey-ledger .jl-progress-track {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        background:
+          linear-gradient(180deg, rgba(60,42,23,0.85) 0%, rgba(85,62,38,0.7) 50%, rgba(110,82,52,0.65) 100%);
+        border: 1px solid var(--jl-border);
+        border-radius: 13px;
+        overflow: hidden;
+        box-shadow:
+          inset 0 2px 4px rgba(0,0,0,0.45),
+          inset 0 -1px 1px rgba(255,240,210,0.25),
+          0 1px 0 rgba(255,250,230,0.3);
+        transition: border-color 200ms ease, box-shadow 300ms ease;
+      }
+      .journey-ledger .jl-progress-bar:hover .jl-progress-track {
+        border-color: var(--jl-gold);
+      }
+      /* Green animated fill — width transitions when state changes, stripes
+         scroll continuously via a pseudo-element overlay (CSS-Tricks idiom). */
+      .journey-ledger .jl-progress-fill {
+        position: absolute;
+        top: 0; left: 0; bottom: 0;
+        width: 0%;
+        background: linear-gradient(180deg,
+          #7bd97b 0%,
+          #4caf50 45%,
+          #2e8b35 100%);
+        box-shadow:
+          inset 0 1px 2px rgba(255,255,255,0.55),
+          inset 0 -1px 3px rgba(0,40,0,0.28),
+          0 0 6px rgba(76,175,80,0.4);
+        transition: width 700ms cubic-bezier(0.4, 0, 0.2, 1);
+        overflow: hidden;
+        border-right: 1px solid rgba(0,60,0,0.35);
+      }
+      .journey-ledger .jl-progress-fill::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-image: linear-gradient(
+          -45deg,
+          rgba(255,255,255,0.22) 25%,
+          transparent 25%,
+          transparent 50%,
+          rgba(255,255,255,0.22) 50%,
+          rgba(255,255,255,0.22) 75%,
+          transparent 75%
+        );
+        background-size: 30px 30px;
+        animation: jl-progress-stripes 1.4s linear infinite;
+        pointer-events: none;
+      }
+      @keyframes jl-progress-stripes {
+        from { background-position: 0 0; }
+        to   { background-position: 30px 0; }
+      }
+      .journey-ledger .jl-progress-text {
+        position: relative;
+        z-index: 1;
+        text-align: center;
+        line-height: 24px;
+        font-family: "IM Fell English SC", serif;
+        font-size: 0.86rem;
+        /* Light text for the dark recessed track */
+        color: #fff5d8;
+        text-shadow:
+          0 0 4px rgba(0,0,0,0.85),
+          0 1px 1px rgba(0,0,0,0.6);
+        padding: 0 8px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      /* ----- Milestone markers ----- */
+      .journey-ledger .jl-ms {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        width: 0;
+        z-index: 2;
+        pointer-events: none; /* clicks pass through to the bar (edit) */
+      }
+      .journey-ledger .jl-ms-line {
+        position: absolute;
+        left: 50%;
+        top: -4px;
+        bottom: -4px;
+        width: 2px;
+        margin-left: -1px;
+        background: linear-gradient(180deg,
+          rgba(107,79,42,0.85) 0%,
+          rgba(107,79,42,0.55) 50%,
+          rgba(107,79,42,0.85) 100%);
+        border-radius: 1px;
+        pointer-events: none;
+      }
+      .journey-ledger .jl-ms.reached .jl-ms-line {
+        background: linear-gradient(180deg,
+          rgba(201,162,39,0.95) 0%,
+          rgba(201,162,39,0.65) 50%,
+          rgba(201,162,39,0.95) 100%);
+      }
+      .journey-ledger .jl-ms-flag {
+        position: absolute;
+        left: 50%;
+        top: -16px;
+        transform: translateX(-50%);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 18px;
+        height: 18px;
+        padding: 0 4px;
+        background: var(--jl-bg-deep);
+        border: 1px solid var(--jl-border);
+        border-radius: 9px;
+        font-size: 0.78rem;
+        line-height: 1;
+        color: var(--jl-header);
+        white-space: nowrap;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        pointer-events: auto;
+        cursor: help;
+      }
+      .journey-ledger .jl-ms.reached .jl-ms-flag {
+        background: linear-gradient(180deg, #f6e3a8 0%, #e3c97a 100%);
+        border-color: var(--jl-gold);
+        color: var(--jl-header);
+      }
+      .journey-ledger .jl-ms.current .jl-ms-flag {
+        animation: jl-ms-pulse 1.6s ease-in-out infinite;
+      }
+      @keyframes jl-ms-pulse {
+        0%, 100% { box-shadow: 0 1px 2px rgba(0,0,0,0.3), 0 0 0 0 rgba(201,162,39,0.45); }
+        50%      { box-shadow: 0 1px 2px rgba(0,0,0,0.3), 0 0 0 6px rgba(201,162,39,0); }
+      }
+      /* Milestone label — Constant size by design: font never shrinks for
+         long names, so legibility stays uniform across the bar. Names longer
+         than max-width are ellipsized; the full text lives in the tooltip. */
+      .journey-ledger .jl-ms-label {
+        position: absolute;
+        left: 50%;
+        top: 100%;
+        margin-top: 3px;
+        transform: translateX(-50%);
+        font-family: "IM Fell English SC", serif;
+        font-size: 0.78rem;         /* constant — never overridden per marker */
+        font-weight: 500;
+        line-height: 1.1;
+        color: var(--jl-header);
+        white-space: nowrap;
+        max-width: 140px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        padding: 1px 6px;
+        background: rgba(244,236,216,0.85);    /* parchment chip, makes labels readable against the busy bar background */
+        border: 1px solid rgba(107,79,42,0.25);
+        border-radius: 8px;
+        box-shadow: 0 1px 1px rgba(0,0,0,0.08);
+        pointer-events: none;
+        z-index: 1;
+      }
+      .journey-ledger .jl-ms.reached .jl-ms-label {
+        background: rgba(255,247,210,0.92);
+        border-color: rgba(201,162,39,0.55);
+        color: var(--jl-button);
+        font-weight: 600;
+      }
+      .journey-ledger .jl-ms.last .jl-ms-label {
+        background: linear-gradient(180deg, rgba(255,242,184,0.95) 0%, rgba(255,216,74,0.85) 100%);
+        border-color: #b8860b;
+        color: #4a2f00;
+        font-weight: 700;
+      }
+      /* Two-tier stagger: even-indexed markers keep the label close to the
+         bar; odd-indexed markers drop it ~14px lower. Each tier also has a
+         subtle vertical guide-line extension so the label visually ties back
+         to its flag even when shifted down. */
+      .journey-ledger .jl-ms.jl-ms-stagger-near .jl-ms-label { margin-top: 3px; }
+      .journey-ledger .jl-ms.jl-ms-stagger-far  .jl-ms-label { margin-top: 19px; }
+      .journey-ledger .jl-ms.jl-ms-stagger-far::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 100%;
+        width: 1px;
+        height: 18px;
+        margin-left: -0.5px;
+        background: rgba(107,79,42,0.4);
+        pointer-events: none;
+      }
+      .journey-ledger .jl-ms.jl-ms-stagger-far.reached::after {
+        background: rgba(201,162,39,0.6);
+      }
+      .journey-ledger .jl-ms.last .jl-ms-flag {
+        background: linear-gradient(180deg, #fff2b8 0%, #ffd84a 100%);
+        border-color: #b8860b;
+        color: #4a2f00;
+        font-weight: 700;
+        text-shadow: 0 0 4px rgba(255,215,60,0.6);
+      }
+      .journey-ledger .jl-ms.last.reached .jl-ms-flag {
+        animation: jl-star-celebrate 1.4s ease-in-out infinite;
+      }
+
+      @keyframes jl-star-celebrate {
+        0%, 100% {
+          transform: translateX(-50%) scale(1.05) rotate(0deg);
+          filter: brightness(1.2);
+        }
+        50% {
+          transform: translateX(-50%) scale(1.35) rotate(8deg);
+          filter: brightness(1.45);
+        }
+      }
+      .journey-ledger .jl-progress-bar.jl-complete .jl-progress-track {
+        box-shadow:
+          inset 0 1px 3px rgba(60,40,20,0.28),
+          inset 0 -1px 1px rgba(255,250,230,0.4),
+          0 0 12px rgba(76, 175, 80, 0.55);
+      }
+
+      /* ----- Subtitle ("Étape 2/4 — Carrefour → Pont · 4/14 h") ----- */
+      .journey-ledger .jl-progress-subtitle {
+        font-family: "Cinzel", serif;
+        font-size: 0.78rem;
+        color: var(--jl-header);
+        text-align: center;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        opacity: 0.92;
+        min-height: 1em;
+      }
+      .journey-ledger .jl-progress-subtitle .jl-leg-from,
+      .journey-ledger .jl-progress-subtitle .jl-leg-to {
+        font-weight: 600;
+      }
+      .journey-ledger .jl-progress-subtitle .jl-leg-to { color: var(--jl-button); }
+      .journey-ledger .jl-progress-subtitle .jl-leg-icon {
+        font-style: normal;
+        margin: 0 2px;
+        opacity: 0.8;
+      }
+      .journey-ledger .jl-progress-subtitle.complete {
+        color: var(--jl-success);
+        font-weight: 600;
+      }
+
+      .journey-ledger .jl-progress-empty .jl-progress-track {
+        background: rgba(245,235,210,0.45);
+      }
+      .journey-ledger .jl-progress-empty .jl-progress-text {
+        opacity: 0.65;
+        font-style: italic;
+        color: var(--jl-body);
+        text-shadow: none;
+      }
+      .journey-ledger .jl-progress-edit {
+        color: var(--jl-button);
+      }
+      .journey-ledger .jl-progress-edit:hover {
+        color: var(--jl-gold);
+      }
+
+      /* Legend strip */
+      .journey-ledger .jl-legend {
+        display: flex;
+        gap: 14px;
+        padding: 4px 14px 6px 14px;
+        border-bottom: 1px solid var(--jl-border-soft);
+        font-size: 0.85rem;
+        color: var(--jl-body);
+        background: rgba(245,235,210,0.4);
+        font-family: "Cinzel", serif;
+      }
+      .journey-ledger .jl-legend .jl-legend-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      /* Panorama (horizontal scroll, 8 columns) */
+      .journey-ledger .jl-panorama {
+        display: flex;
+        align-items: stretch;
+        gap: 0;
+        overflow-x: auto;
+        overflow-y: hidden;
+        max-height: calc(100vh - 220px);
+        scrollbar-color: var(--jl-border) var(--jl-bg-deep);
+      }
+      .journey-ledger .jl-column {
+        flex: 0 0 auto;
+        border-right: 1px dashed var(--jl-border-soft);
+        padding: 8px 10px 12px 10px;
+        display: flex;
+        flex-direction: column;
+        min-height: 600px;
+        max-height: calc(100vh - 220px);
+        overflow-y: auto;
+      }
+      .journey-ledger .jl-column:last-child {
+        border-right: none;
+      }
+      .journey-ledger .jl-column-header {
+        text-align: center;
+        margin-bottom: 6px;
+      }
+      .journey-ledger .jl-time-circle {
+        display: inline-block;
+        border: 1px solid var(--jl-border);
+        border-radius: 50%;
+        width: 46px;
+        height: 46px;
+        line-height: 44px;
+        font-family: "IM Fell English SC", serif;
+        font-size: 0.85rem;
+        color: var(--jl-header);
+        background: rgba(255,250,235,0.65);
+        margin: 0 auto 4px auto;
+        text-align: center;
+      }
+      .journey-ledger .jl-phase-title {
+        font-family: "IM Fell English SC", serif;
+        font-size: 1.02rem;
+        color: var(--jl-header);
+        line-height: 1.15;
+        padding-bottom: 4px;
+        border-bottom: 1px solid var(--jl-gold);
+      }
+      .journey-ledger .jl-phase-cost {
+        font-size: 0.82rem;
+        font-style: italic;
+        color: var(--jl-button);
+        margin-top: 2px;
+      }
+      .journey-ledger .jl-phase-icon {
+        color: var(--jl-gold);
+        margin-right: 4px;
+      }
+
+      /* Activity list inside a column */
+      .journey-ledger .jl-activities {
+        margin-top: 6px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .journey-ledger .jl-activity {
+        border: 1px solid var(--jl-border-soft);
+        background: rgba(255,250,235,0.55);
+        border-radius: 3px;
+        padding: 4px 6px;
+      }
+      .journey-ledger .jl-activity.jl-activity-mandatory {
+        border-color: var(--jl-gold);
+        background: rgba(255,245,200,0.7);
+      }
+      .journey-ledger .jl-activity-name {
+        font-family: "IM Fell English SC", serif;
+        font-size: 0.95rem;
+        color: var(--jl-header);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+        cursor: help;
+      }
+      .journey-ledger .jl-activity-tags {
+        font-size: 0.78rem;
+        display: inline-flex;
+        gap: 2px;
+        opacity: 0.9;
+      }
+      .journey-ledger .jl-assignees {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        margin-top: 4px;
+      }
+      .journey-ledger .jl-assignee {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        background: var(--jl-bg-deep);
+        border: 1px solid var(--jl-border);
+        border-radius: 12px;
+        padding: 1px 6px;
+        font-size: 0.82rem;
+      }
+      .journey-ledger .jl-assignee .jl-aname {
+        flex: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .journey-ledger .jl-assignee .jl-roll,
+      .journey-ledger .jl-assignee .jl-rm {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0 2px;
+        font-size: 0.85rem;
+        line-height: 1;
+        color: var(--jl-button);
+      }
+      .journey-ledger .jl-assignee .jl-roll:hover { color: var(--jl-success); }
+      .journey-ledger .jl-assignee .jl-rm:hover   { color: var(--jl-danger); }
+      .journey-ledger .jl-assignee select.jl-skill-pick {
+        font-size: 0.78rem;
+        padding: 0 2px;
+        max-width: 90px;
+      }
+
+      .journey-ledger .jl-pair-roll {
+        margin-top: 2px;
+        display: flex;
+        gap: 4px;
+        align-items: center;
+        font-size: 0.78rem;
+        color: var(--jl-header);
+      }
+
+      /* Add-assignee picker */
+      .journey-ledger .jl-add-picker {
+        display: flex;
+        gap: 3px;
+        margin-top: 3px;
+      }
+      .journey-ledger .jl-add-picker select {
+        flex: 1;
+        font-size: 0.78rem;
+        background: rgba(255,252,238,0.85);
+        border: 1px solid var(--jl-border);
+        color: var(--jl-body);
+        font-family: "Cinzel", serif;
+        border-radius: 3px;
+        padding: 1px 4px;
+      }
+      .journey-ledger .jl-warn-banner {
+        background: rgba(160,32,32,0.12);
+        border: 1px solid var(--jl-danger);
+        color: var(--jl-danger);
+        font-size: 0.82rem;
+        padding: 3px 6px;
+        border-radius: 3px;
+        margin-top: 4px;
+        text-align: center;
+        font-family: "IM Fell English SC", serif;
+      }
+      .journey-ledger .jl-info-banner {
+        background: rgba(201,162,39,0.16);
+        border: 1px solid var(--jl-gold);
+        color: var(--jl-header);
+        font-size: 0.82rem;
+        padding: 3px 6px;
+        border-radius: 3px;
+        margin-top: 4px;
+        font-family: "IM Fell English SC", serif;
+      }
+
+      /* Phase-specific groups (camp, watch) */
+      .journey-ledger .jl-mini-section {
+        margin-top: 8px;
+        padding: 6px;
+        border: 1px dashed var(--jl-border-soft);
+        border-radius: 3px;
+        background: rgba(255,250,235,0.55);
+      }
+      .journey-ledger .jl-mini-section h4 {
+        font-family: "IM Fell English SC", serif;
+        font-size: 0.9rem;
+        color: var(--jl-header);
+        margin: 0 0 4px 0;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .journey-ledger .jl-quality-row {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.82rem;
+        padding: 1px 0;
+      }
+      .journey-ledger .jl-quality-row input { accent-color: var(--jl-button); }
+      .journey-ledger .jl-dc-row {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        margin-top: 4px;
+        font-size: 0.82rem;
+      }
+      .journey-ledger .jl-dc-row input { width: 60px; }
+      .journey-ledger input, .journey-ledger select, .journey-ledger textarea {
+        background: rgba(255,252,238,0.85);
+        border: 1px solid var(--jl-border);
+        color: var(--jl-body);
+        font-family: "Cinzel", serif;
+        border-radius: 3px;
+        padding: 1px 4px;
+      }
+      .journey-ledger .jl-trap-row {
+        display: grid;
+        grid-template-columns: 22px 1fr 50px auto;
+        gap: 3px;
+        align-items: center;
+        font-size: 0.82rem;
+        margin-bottom: 2px;
+      }
+      .journey-ledger .jl-watch-row {
+        display: grid;
+        grid-template-columns: 22px 1fr 18px;
+        gap: 3px;
+        align-items: center;
+        font-size: 0.82rem;
+        margin-bottom: 4px;
+      }
+      .journey-ledger .jl-watch-chips {
+        grid-column: 1 / -1;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 3px;
+        margin-bottom: 2px;
+      }
+      .journey-ledger .jl-watch-chip {
+        background: var(--jl-bg-deep);
+        border: 1px solid var(--jl-border);
+        border-radius: 10px;
+        padding: 0 6px;
+        font-size: 0.78rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+      }
+
+      /* PC roster (bottom strip) */
+      .journey-ledger .jl-roster {
+        display: flex;
+        gap: 6px;
+        padding: 6px 14px;
+        flex-wrap: wrap;
+        border-top: 1px solid var(--jl-gold);
+        background: rgba(245,235,210,0.6);
+      }
+      .journey-ledger .jl-pc-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: var(--jl-bg-deep);
+        border: 1px solid var(--jl-border);
+        border-radius: 12px;
+        padding: 2px 8px;
+        font-size: 0.85rem;
+      }
+      .journey-ledger .jl-pc-chip.jl-warn { border-color: var(--jl-danger); }
+      .journey-ledger .jl-pc-chip .jl-pc-name { font-weight: 600; color: var(--jl-header); }
+      .journey-ledger .jl-pc-chip .jl-pc-tag {
+        display: inline-flex; align-items: center;
+        background: #f9f2dc;
+        border: 1px solid var(--jl-border-soft);
+        padding: 0 4px;
+        border-radius: 8px;
+        font-size: 0.74rem;
+      }
+      .journey-ledger .jl-pc-chip .jl-pc-tag.jl-tag-danger {
+        background: rgba(160,32,32,0.15);
+        border-color: var(--jl-danger);
+        color: var(--jl-danger);
+      }
+
+      /* Footer (post / show / récap) */
+      .journey-ledger .jl-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        padding: 8px 14px;
+        border-top: 1px solid var(--jl-gold);
+        background: rgba(245,235,210,0.6);
+      }
+
+      /* Camp finder (role-grouped) */
+      .journey-ledger .jl-camp-finder { display: flex; flex-direction: column; gap: 4px; }
+      .journey-ledger .jl-finder-note {
+        font-size: 0.74rem;
+        opacity: 0.78;
+        margin: 0 0 4px 0;
+        font-style: italic;
+        color: var(--jl-header);
+      }
+      .journey-ledger .jl-finder-note i { color: var(--jl-gold); margin-right: 2px; }
+      .journey-ledger .jl-finder-group {
+        border-left: 3px solid var(--jl-gold);
+        padding: 3px 6px;
+        margin-bottom: 2px;
+        background: rgba(255,250,235,0.45);
+        border-radius: 0 4px 4px 0;
+      }
+      .journey-ledger .jl-finder-group.jl-finder-empty { opacity: 0.55; }
+      .journey-ledger .jl-finder-scout { border-left-color: #6c8ba8; }
+      .journey-ledger .jl-finder-watch { border-left-color: #a8702b; }
+      .journey-ledger .jl-finder-idle  { border-left-color: #6a9a4a; }
+      .journey-ledger .jl-finder-header {
+        font-family: "IM Fell English SC", serif;
+        font-size: 0.84rem;
+        color: var(--jl-header);
+        margin-bottom: 2px;
+      }
+      .journey-ledger .jl-finder-empty-line {
+        font-size: 0.76rem;
+        opacity: 0.7;
+        padding: 1px 0 1px 4px;
+      }
+      .journey-ledger .jl-finder-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 6px;
+        padding: 2px 4px 2px 8px;
+        font-size: 0.86rem;
+      }
+      .journey-ledger .jl-finder-name {
+        flex: 1;
+        /* No truncation — full name always readable. */
+        word-break: break-word;
+        line-height: 1.15;
+        color: var(--jl-body);
+      }
+      .journey-ledger .jl-finder-roll {
+        flex-shrink: 0;
+        background: rgba(76,175,80,0.18);
+        border: 1px solid var(--jl-success);
+        border-radius: 3px;
+        padding: 1px 7px;
+        font-size: 0.82rem;
+        line-height: 1;
+        color: var(--jl-success);
+        cursor: pointer;
+      }
+      .journey-ledger .jl-finder-roll:hover {
+        background: var(--jl-success);
+        color: #fff;
+      }
+      .journey-ledger button.jl-btn {
+        background: var(--jl-button);
+        color: var(--jl-bg);
+        border: 1px solid var(--jl-border);
+        border-radius: 3px;
+        padding: 4px 10px;
+        font-family: "IM Fell English SC", serif;
+        letter-spacing: 0.03em;
+        cursor: pointer;
+        transition: background-color 120ms ease;
+      }
+      .journey-ledger button.jl-btn:hover { background: var(--jl-button-hover); }
+      .journey-ledger button.jl-btn.jl-ghost {
+        background: transparent;
+        color: var(--jl-button);
+        border-color: var(--jl-button);
+      }
+      .journey-ledger button.jl-btn.jl-ghost:hover {
+        background: var(--jl-button);
+        color: var(--jl-bg);
+      }
+      .journey-ledger button.jl-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .journey-ledger button.jl-icon-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 0.95rem;
+        padding: 0 2px;
+        color: var(--jl-button);
+      }
+      .journey-ledger button.jl-icon-btn:hover { color: var(--jl-button-hover); }
+
+      /* Chat message styling */
+      .chat-message .journey-ledger-chat {
+        font-family: "Cinzel", serif;
+        color: #2b1d0e;
+        background: #f4ecd8;
+        border: 1px solid #6b4f2a;
+        border-radius: 4px;
+        padding: 8px 10px;
+      }
+      .chat-message .journey-ledger-chat h2 {
+        font-family: "IM Fell English SC", serif;
+        font-size: 1.05rem;
+        color: #3e2a17;
+        margin: 0 0 4px 0;
+        border-bottom: 1px solid #c9a227;
+        padding-bottom: 2px;
+      }
+      .chat-message .journey-ledger-chat h3 {
+        font-family: "IM Fell English SC", serif;
+        font-size: 0.95rem;
+        color: #3e2a17;
+        margin: 6px 0 2px 0;
+      }
+      .chat-message .journey-ledger-chat ul { margin: 2px 0 2px 16px; padding: 0; }
+      .chat-message .journey-ledger-chat .jl-tag {
+        display: inline-block;
+        background: #ead9b4;
+        border: 1px solid #6b4f2a;
+        border-radius: 10px;
+        padding: 0 6px;
+        margin-right: 4px;
+        font-size: 0.85rem;
+      }
+      /* Trip-edit dialog (calculator + trip params) */
+      .jl-trip-edit {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 6px 4px 0 4px;
+        font-family: "Cinzel", serif;
+        color: #2b1d0e;
+      }
+      .jl-trip-edit .jl-edit-section {
+        border: 1px solid #6b4f2a;
+        border-radius: 4px;
+        padding: 8px 10px;
+        background: rgba(245,235,210,0.55);
+      }
+      .jl-trip-edit .jl-edit-section h3 {
+        font-family: "IM Fell English SC", serif;
+        font-size: 1rem;
+        color: #3e2a17;
+        margin: 0 0 6px 0;
+        padding-bottom: 3px;
+        border-bottom: 1px solid #c9a227;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .jl-trip-edit .jl-edit-section h3 i { color: #c9a227; }
+      .jl-trip-edit .jl-calc-solve {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 6px;
+        font-family: "IM Fell English SC", serif;
+        color: #3e2a17;
+      }
+      .jl-trip-edit .jl-calc-grid {
+        display: grid;
+        grid-template-columns: 90px 1fr 96px;
+        gap: 4px 8px;
+        align-items: center;
+      }
+      .jl-trip-edit .jl-calc-grid > label {
+        font-family: "IM Fell English SC", serif;
+        color: #3e2a17;
+      }
+      .jl-trip-edit .jl-calc-grid input,
+      .jl-trip-edit .jl-calc-grid select,
+      .jl-trip-edit .jl-trip-section input {
+        background: rgba(255,252,238,0.85);
+        border: 1px solid #6b4f2a;
+        color: #2b1d0e;
+        font-family: "Cinzel", serif;
+        border-radius: 3px;
+        padding: 2px 6px;
+      }
+      .jl-trip-edit .jl-calc-grid input.jl-calc-output {
+        background: rgba(201, 162, 39, 0.18);
+        border-color: #c9a227;
+        font-weight: 700;
+        color: #3e2a17;
+      }
+      .jl-trip-edit .jl-calc-apply {
+        align-self: flex-end;
+        margin-top: 8px;
+        background: #5a3e24;
+        color: #f4ecd8;
+        border: 1px solid #6b4f2a;
+        border-radius: 3px;
+        padding: 3px 10px;
+        font-family: "IM Fell English SC", serif;
+        cursor: pointer;
+      }
+      .jl-trip-edit .jl-calc-apply:hover { background: #7a5732; }
+      .jl-trip-edit .jl-trip-section .jl-trip-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        padding: 2px 0;
+      }
+      .jl-trip-edit .jl-trip-section .jl-trip-row > span {
+        font-family: "IM Fell English SC", serif;
+        color: #3e2a17;
+      }
+      .jl-trip-edit .jl-trip-section input { width: 110px; }
+      .jl-trip-edit .jl-edit-note {
+        font-size: 0.78rem;
+        opacity: 0.75;
+        margin: 4px 0 0 0;
+        font-style: italic;
+      }
+
+      /* Milestones editor (inside the trip-edit dialog).
+         Column template: reorder | icon | name | hours | miles | note | remove
+         Numeric columns get fixed widths large enough for 2-decimal values up
+         to ~9999.99. Name/note are flex-distributed so the editor breathes
+         when the dialog is widened. */
+      .jl-trip-edit .jl-ms-editor { display: flex; flex-direction: column; gap: 4px; }
+      .jl-trip-edit .jl-ms-editor-head {
+        display: grid;
+        grid-template-columns: 44px 50px minmax(160px, 1.2fr) 100px 100px minmax(180px, 1.4fr) 32px;
+        gap: 6px;
+        font-size: 0.74rem;
+        opacity: 0.7;
+        padding: 0 2px;
+        font-family: "Cinzel", serif;
+      }
+      .jl-trip-edit .jl-ms-row {
+        display: grid;
+        grid-template-columns: 44px 50px minmax(160px, 1.2fr) 100px 100px minmax(180px, 1.4fr) 32px;
+        gap: 6px;
+        align-items: center;
+        padding: 3px 4px;
+        background: rgba(255,250,235,0.4);
+        border: 1px solid rgba(107,79,42,0.2);
+        border-radius: 3px;
+      }
+      .jl-trip-edit .jl-ms-row .jl-ms-reorder {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+      }
+      .jl-trip-edit .jl-ms-row .jl-ms-reorder button {
+        background: #5a3e24;
+        color: #f4ecd8;
+        border: 1px solid #6b4f2a;
+        border-radius: 2px;
+        cursor: pointer;
+        font-size: 0.7rem;
+        line-height: 1;
+        padding: 1px 4px;
+      }
+      .jl-trip-edit .jl-ms-row .jl-ms-reorder button:hover { background: #7a5732; }
+      .jl-trip-edit .jl-ms-row input {
+        padding: 2px 6px;
+        font-size: 0.88rem;
+        min-width: 0;
+        width: 100%;
+        box-sizing: border-box;
+        text-overflow: ellipsis;
+      }
+      .jl-trip-edit .jl-ms-row input[type="number"] { text-align: right; }
+      .jl-trip-edit .jl-ms-row input.jl-ms-icon-input { text-align: center; padding: 2px 2px; }
+      .jl-trip-edit .jl-ms-row button.jl-ms-remove {
+        background: none;
+        border: 1px solid transparent;
+        color: var(--jl-danger, #a02020);
+        cursor: pointer;
+        font-size: 0.95rem;
+        padding: 2px 4px;
+        border-radius: 2px;
+      }
+      .jl-trip-edit .jl-ms-row button.jl-ms-remove:hover {
+        background: rgba(160,32,32,0.1);
+        border-color: var(--jl-danger, #a02020);
+      }
+      .jl-trip-edit .jl-ms-add-row {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        margin-top: 6px;
+      }
+      .jl-trip-edit .jl-ms-add-row button {
+        background: #5a3e24;
+        color: #f4ecd8;
+        border: 1px solid #6b4f2a;
+        border-radius: 3px;
+        font-family: "IM Fell English SC", serif;
+        font-size: 0.85rem;
+        padding: 3px 10px;
+        cursor: pointer;
+      }
+      .jl-trip-edit .jl-ms-add-row button:hover { background: #7a5732; }
+      .jl-trip-edit .jl-snap-row {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        margin-top: 4px;
+        font-size: 0.85rem;
+      }
+      .jl-trip-edit .jl-snap-row select { flex: 1; }
+      .jl-trip-edit .jl-calc-apply-row {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+        margin-top: 4px;
+      }
+      .jl-trip-edit .jl-calc-apply-row select {
+        font-size: 0.85rem;
+        padding: 1px 4px;
+      }
+      /* Fixed Départ / Destination rows — visually distinct, fields locked */
+      .jl-trip-edit .jl-ms-row.jl-ms-row-fixed {
+        background: rgba(201,162,39,0.10);
+        border-color: var(--jl-gold, #c9a227);
+      }
+      .jl-trip-edit .jl-ms-row.jl-ms-row-start { border-left: 3px solid var(--jl-gold, #c9a227); }
+      .jl-trip-edit .jl-ms-row.jl-ms-row-end   { border-left: 3px solid #b8860b; }
+      .jl-trip-edit .jl-ms-row.jl-ms-row-fixed input[disabled] {
+        background: rgba(0,0,0,0.04);
+        color: rgba(43,29,14,0.6);
+        font-style: italic;
+        cursor: not-allowed;
+      }
+      .jl-trip-edit .jl-ms-reorder-spacer {
+        /* Same width as the reorder column to keep the grid aligned */
+        width: 100%;
+        min-height: 1px;
+      }
+      .jl-trip-edit .jl-ms-no-remove {
+        /* Same footprint as the remove button so the grid stays aligned */
+        display: inline-block;
+        width: 26px;
+        height: 1px;
+      }
+
+      /* Destination marker on the bar: nudge slightly so it doesn't fully
+         hide the last user waypoint at the same cumulative position. */
+      .journey-ledger .jl-ms.jl-ms-end .jl-ms-flag {
+        top: -22px; /* lifted higher than other flags */
+      }
+      .journey-ledger .jl-ms.jl-ms-end .jl-ms-line {
+        top: -10px;
+        background: linear-gradient(180deg,
+          #ffd84a 0%,
+          rgba(184,134,11,0.75) 50%,
+          #ffd84a 100%);
+      }
+      .journey-ledger .jl-ms.jl-ms-start .jl-ms-flag {
+        background: linear-gradient(180deg, #f6e3a8 0%, #e3c97a 100%);
+        border-color: var(--jl-gold, #c9a227);
+      }
+
+      .chat-message .journey-ledger-chat .jl-popup-wrap { text-align: center; margin-top: 6px; }
+      .chat-message .journey-ledger-chat .jl-popup-btn {
+        background: #5a3e24;
+        color: #f4ecd8;
+        border: 1px solid #6b4f2a;
+        border-radius: 3px;
+        padding: 3px 8px;
+        font-family: "IM Fell English SC", serif;
+        cursor: pointer;
+      }
+      .chat-message .journey-ledger-chat .jl-apply-exh {
+        background: #a02020;
+        color: #f4ecd8;
+        border: 1px solid #6b4f2a;
+        border-radius: 3px;
+        padding: 2px 8px;
+        font-family: "IM Fell English SC", serif;
+        cursor: pointer;
+        margin-left: 6px;
+      }
+
+      /* ---------------------------------------------------------------------------
+       * §10 — Inline skill label on activity cards (Phase 2 addition).
+       *
+       * Replaces the deleted per-assignee skill-picker dropdown. Muted pastel
+       * blue to sit next to the activity name without competing with it.
+       * ------------------------------------------------------------------ */
+      .journey-ledger .jl-activity-skill {
+        font-size: 0.78rem;
+        font-style: italic;
+        color: #5b7a9c;          /* pastel blue, low-competition with parchment */
+        margin-left: 6px;
+        opacity: 0.95;
+        font-family: "Cinzel", serif;
+        letter-spacing: 0.02em;
+        font-weight: 400;
+      }
+
+      /* ---------------------------------------------------------------------------
+       * Phase 2.1 #9a — Camp panel: collapsible "Trouver et établir un camp"
+       * reference text. Uses semantic <details> so it works without JS;
+       * default closed so the actionable controls stay above the fold.
+       * ------------------------------------------------------------------ */
+      .journey-ledger .jl-camp-rules {
+        font-size: 0.78rem;
+        line-height: 1.35;
+      }
+      .journey-ledger .jl-camp-rules > summary {
+        font-family: "IM Fell English SC", serif;
+        font-size: 0.86rem;
+        color: var(--jl-header);
+        cursor: pointer;
+        list-style: none;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 2px 0;
+      }
+      .journey-ledger .jl-camp-rules > summary::-webkit-details-marker { display: none; }
+      .journey-ledger .jl-camp-rules > summary::before {
+        content: "▸";
+        display: inline-block;
+        transition: transform 150ms ease;
+        color: var(--jl-gold);
+        font-size: 0.9rem;
+      }
+      .journey-ledger .jl-camp-rules[open] > summary::before { transform: rotate(90deg); }
+      .journey-ledger .jl-camp-rules > summary > i { color: var(--jl-gold); }
+
+      .journey-ledger .jl-camp-rules-body { padding: 4px 2px 2px 2px; }
+      .journey-ledger .jl-camp-rules-body p { margin: 4px 0; }
+      .journey-ledger .jl-camp-rules-body ul {
+        margin: 4px 0;
+        padding-left: 18px;
+      }
+      .journey-ledger .jl-camp-rules-body ul li { margin: 2px 0; }
+      .journey-ledger .jl-camp-rules-body h5 {
+        font-family: "IM Fell English SC", serif;
+        font-size: 0.84rem;
+        color: var(--jl-header);
+        margin: 8px 0 3px 0;
+        padding-bottom: 2px;
+        border-bottom: 1px dashed var(--jl-border-soft);
+      }
+      .journey-ledger .jl-camp-rules-warn {
+        background: rgba(160,32,32,0.10);
+        border-left: 3px solid var(--jl-danger);
+        padding: 4px 8px;
+        margin: 6px 0 !important;
+        border-radius: 2px;
+      }
+      .journey-ledger .jl-camp-rules-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 4px 0;
+        font-size: 0.78rem;
+      }
+      .journey-ledger .jl-camp-rules-table th,
+      .journey-ledger .jl-camp-rules-table td {
+        border: 1px solid var(--jl-border-soft);
+        padding: 2px 6px;
+        text-align: left;
+      }
+      .journey-ledger .jl-camp-rules-table th {
+        background: var(--jl-bg-deep);
+        font-family: "IM Fell English SC", serif;
+        color: var(--jl-header);
+      }
+      .journey-ledger .jl-camp-rules-table td:first-child {
+        font-weight: 600;
+        text-align: center;
+        width: 60px;
+        color: var(--jl-button);
+      }
+      .journey-ledger .jl-camp-rules-props {
+        margin: 4px 0;
+        padding: 0;
+      }
+      .journey-ledger .jl-camp-rules-props dt {
+        font-family: "IM Fell English SC", serif;
+        font-size: 0.86rem;
+        color: var(--jl-header);
+        margin-top: 5px;
+      }
+      .journey-ledger .jl-camp-rules-props dd {
+        margin: 0 0 2px 0;
+        padding-left: 4px;
+        opacity: 0.92;
+      }
+
+      /* ---------------------------------------------------------------------------
+       * Phase 2.1 #9b — DC inputs gated on the matching quality checkbox.
+       * Disabled inputs read as muted parchment with not-allowed cursor; the
+       * surrounding label dims too so the gating reason is visible at a glance.
+       * ------------------------------------------------------------------ */
+      .journey-ledger .jl-dc-row input[disabled] {
+        background: rgba(0,0,0,0.04);
+        color: rgba(43,29,14,0.5);
+        font-style: italic;
+        cursor: not-allowed;
+      }
+      .journey-ledger .jl-dc-row label.jl-dc-disabled {
+        opacity: 0.6;
+      }
+
+      /* ---------------------------------------------------------------------------
+       * Phase 2.2 #9c — Smart camp panel.
+       *
+       * Sits between the finder grouping and the qualities checkboxes. The
+       * derivation preview line shows what the panel computed; the actual
+       * qualities checkboxes below are the source of truth and reflect the
+       * applied derivation (or any manual override).
+       * ------------------------------------------------------------------ */
+      .journey-ledger .jl-camp-smart h4 i { color: var(--jl-gold); }
+
+      .journey-ledger .jl-camp-smart-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 4px;
+        font-size: 0.84rem;
+      }
+      .journey-ledger .jl-camp-smart-row label {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        color: var(--jl-header);
+      }
+      .journey-ledger .jl-camp-smart-row input[type="number"] {
+        width: 60px;
+        text-align: right;
+      }
+      .journey-ledger button.jl-btn.jl-camp-smart-btn {
+        font-size: 0.78rem;
+        padding: 2px 8px;
+      }
+
+      .journey-ledger .jl-camp-smart-preview {
+        background: rgba(201,162,39,0.10);
+        border-left: 3px solid var(--jl-gold);
+        padding: 5px 8px;
+        margin-top: 4px;
+        font-size: 0.84rem;
+        line-height: 1.35;
+        color: var(--jl-body);
+        border-radius: 0 3px 3px 0;
+      }
+      .journey-ledger .jl-camp-smart-preview em { opacity: 0.75; }
+
+      .journey-ledger .jl-smart-props-row {
+        margin-top: 4px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+      .journey-ledger .jl-smart-prop {
+        display: inline-block;
+        background: var(--jl-bg-deep);
+        border: 1px solid var(--jl-border);
+        border-radius: 10px;
+        padding: 1px 8px;
+        font-family: "IM Fell English SC", serif;
+        font-size: 0.82rem;
+        color: var(--jl-header);
+      }
+      .journey-ledger .jl-smart-prop.jl-smart-prop-imp {
+        background: linear-gradient(180deg, #fff2b8 0%, #ffd84a 100%);
+        border-color: #b8860b;
+        color: #4a2f00;
+        font-weight: 600;
+      }
+      .journey-ledger .jl-smart-prop.jl-smart-prop-imp::before {
+        content: "★ ";
+        color: #b8860b;
+      }
+      .journey-ledger .jl-smart-imp-tag {
+        background: rgba(184,134,11,0.18);
+        border: 1px solid rgba(184,134,11,0.5);
+        color: #6a4a00;
+        padding: 0 6px;
+        border-radius: 8px;
+        font-size: 0.78rem;
+        margin-left: 4px;
+      }
+
+      .journey-ledger .jl-camp-smart-hint {
+        font-size: 0.72rem;
+        opacity: 0.75;
+        margin: 6px 0 0 0;
+        font-style: italic;
+        color: var(--jl-header);
+        line-height: 1.3;
+      }
+      .journey-ledger .jl-camp-smart-hint i { color: var(--jl-gold); margin-right: 2px; }
+
+      /* ---------------------------------------------------------------------------
+       * Phase 3 — Live-sync UI bits in the banner.
+       *
+       *   .jl-banner-title-stack — stacks the day-name input above the small
+       *     "modifié par X · il y a Ys" attribution line.
+       *   .jl-last-edit          — the attribution line itself; muted italic.
+       *   .jl-no-gm-warn         — orange/red warning chip in the banner's
+       *     actions cluster when no GM is online. Persistence is paused.
+       * ------------------------------------------------------------------ */
+      .journey-ledger .jl-banner .jl-banner-title {
+        align-items: flex-start;
+        gap: 8px;
+      }
+      .journey-ledger .jl-banner-title-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+        min-width: 0;
+      }
+      .journey-ledger .jl-last-edit {
+        font-family: "Cinzel", serif;
+        font-size: 0.70rem;
+        font-style: italic;
+        color: var(--jl-button);
+        opacity: 0.70;
+        line-height: 1.1;
+        min-height: 1em;
+        margin-left: 2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .journey-ledger .jl-no-gm-warn {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: rgba(160, 32, 32, 0.14);
+        border: 1px solid var(--jl-danger);
+        color: var(--jl-danger);
+        font-family: "IM Fell English SC", serif;
+        font-size: 0.80rem;
+        letter-spacing: 0.02em;
+        padding: 2px 10px;
+        border-radius: 12px;
+        white-space: nowrap;
+        cursor: help;
+      }
+      .journey-ledger .jl-no-gm-warn i {
+        color: var(--jl-danger);
+        font-size: 0.85rem;
+      }

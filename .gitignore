@@ -1,0 +1,18 @@
+# Phase 1 backups of the pre-rebuild module attempt (kept on disk as a
+# safety net but not part of the release).
+scripts.old/
+styles.old/
+
+# Release artifact — built by Compress-Archive from the source tree.
+# Generate fresh for each release; don't track in git.
+module.zip
+
+# Verification artifacts
+.zip-verify/
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+*.bak
+*.swp
+*~
