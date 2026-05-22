@@ -15,7 +15,7 @@
  * broadcast carrying a malformed payload must not crash the receiver. */
 
 import { ACTIVITY_BY_KEY, QUALITIES, TRAP_TYPES } from "./constants.js";
-import { createNewDayPreservingTrip } from "./state.js";
+import { createNewDayPreserving } from "./state.js";
 import { deriveCampProperties, FINDER_QUALITY_KEYS } from "./camp-rules.js";
 import { tripMetrics } from "./trip-metrics.js";
 
@@ -165,10 +165,10 @@ function applyRemoveWatchPC(state, { index, actorId }) {
 }
 
 function applyResetDay(state) {
-  // Build a fresh state preserving the current trip, then overwrite `state`'s
-  // properties in place. We can't replace the reference because sync.js holds
-  // the canonical pointer.
-  const fresh = createNewDayPreservingTrip(state.trip);
+  // Build a fresh state preserving cross-day data (trip + per-PC rest
+  // traits), then overwrite `state`'s properties in place. We can't
+  // replace the reference because sync.js holds the canonical pointer.
+  const fresh = createNewDayPreserving(state);
   for (const key of Object.keys(state)) delete state[key];
   Object.assign(state, fresh);
 }
@@ -206,6 +206,39 @@ function applyResetCampSmart(state) {
   state.camp.smartCheck = { result: "", d6: 0 };
   // Note: qualities deliberately left untouched. The user's most recent
   // auto-applied or manually-toggled qualities persist.
+}
+
+/* ---------------------------------------------------------------------------
+ * deferred-#10b — per-PC long-rest requirement
+ *
+ * Sparse storage: only PCs the user has explicitly touched live in the
+ * map. Absent actorIds default to 8 hours (DEFAULT_REQUIRED_HOURS in
+ * stats.js). `null` means "no sleep required". Invalid input is dropped.
+ * ------------------------------------------------------------------------ */
+
+function applySetRestRequirement(state, { actorId, hours }) {
+  if (!actorId) return;
+  state.restRequirements ??= {};
+  if (hours === null) {
+    state.restRequirements[actorId] = null;
+    return;
+  }
+  if (typeof hours === "number" && Number.isFinite(hours) && hours >= 0) {
+    state.restRequirements[actorId] = Math.floor(hours);
+    return;
+  }
+  // Malformed input — silently ignore so a bad broadcast can't corrupt
+  // a receiver's state.
+}
+
+/** Remove a PC from the rest-tracking list entirely. Untracks them — they
+ *  no longer appear in the "Repos requis" mini-section, lose their watch-
+ *  chip warning icon, and are excluded from the day-recap rest flag. */
+function applyRemoveRestRequirement(state, { actorId }) {
+  if (!actorId) return;
+  if (state.restRequirements && actorId in state.restRequirements) {
+    delete state.restRequirements[actorId];
+  }
 }
 
 /* Defensive: ensure `state.camp` has all the fields the handlers expect.
@@ -256,6 +289,9 @@ const HANDLERS = {
   SET_CAMP_CHECK_RESULT:  applySetCampCheckResult,
   SET_CAMP_D6:            applySetCampD6,
   RESET_CAMP_SMART:       applyResetCampSmart,
+  // deferred-#10b
+  SET_REST_REQUIREMENT:    applySetRestRequirement,
+  REMOVE_REST_REQUIREMENT: applyRemoveRestRequirement,
 };
 
 export const MUTATION_TYPES = Object.freeze(Object.keys(HANDLERS));

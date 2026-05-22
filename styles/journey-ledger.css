@@ -1195,9 +1195,13 @@
       }
       .journey-ledger .jl-camp-rules-props dt {
         font-family: "IM Fell English SC", serif;
-        font-size: 0.86rem;
+        font-size: 0.95rem;          /* up from 0.86rem — small-caps need more pixels per stroke to render crisply */
+        font-weight: 400;
+        letter-spacing: 0.03em;       /* breathing room — small-caps look blurry when crammed */
         color: var(--jl-header);
-        margin-top: 5px;
+        margin-top: 7px;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
       }
       .journey-ledger .jl-camp-rules-props dd {
         margin: 0 0 2px 0;
@@ -1361,4 +1365,74 @@
       .journey-ledger .jl-no-gm-warn i {
         color: var(--jl-danger);
         font-size: 0.85rem;
+      }
+
+      /* ---------------------------------------------------------------------------
+       * deferred-#10b — Per-PC long-rest requirement section in the nuit
+       * column. Each row stacks the controls (name + input + "Aucun") above
+       * a status line so the layout fits the 240px-wide nuit column without
+       * horizontal scrolling. Colors reuse the existing palette tokens.
+       * ------------------------------------------------------------------ */
+      .journey-ledger .jl-rest-list {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        font-size: 0.82rem;
+      }
+      .journey-ledger .jl-rest-row {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 4px 2px;
+        border-bottom: 1px dashed var(--jl-border-soft);
+      }
+      .journey-ledger .jl-rest-row:last-child { border-bottom: none; }
+      .journey-ledger .jl-rest-row-main {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      .journey-ledger .jl-rest-name {
+        flex: 1 1 auto;
+        min-width: 0;
+        font-weight: 500;
+        color: var(--jl-header);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .journey-ledger input.jl-rest-input {
+        width: 48px;
+        text-align: right;
+      }
+      .journey-ledger input.jl-rest-input:disabled {
+        background: rgba(0,0,0,0.04);
+        color: rgba(43,29,14,0.5);
+        cursor: not-allowed;
+      }
+      .journey-ledger .jl-rest-none-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        font-size: 0.74rem;
+        white-space: nowrap;
+        cursor: pointer;
+        color: var(--jl-button);
+      }
+      .journey-ledger .jl-rest-status {
+        font-size: 0.76rem;
+        font-style: italic;
+        line-height: 1.25;
+        margin-left: 2px;
+      }
+      .journey-ledger .jl-rest-status-ok   { color: var(--jl-success); }
+      .journey-ledger .jl-rest-status-warn { color: var(--jl-danger); }
+
+      /* Watch chip under-rest warning icon */
+      .journey-ledger .jl-watch-chip .jl-watch-warn {
+        color: var(--jl-danger);
+        margin-right: 3px;
+        font-size: 0.85rem;
+        cursor: help;
       }

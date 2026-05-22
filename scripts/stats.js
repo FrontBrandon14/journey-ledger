@@ -62,3 +62,63 @@ export function distrayanteMalus(state, actorId) {
 export function isEclaireurActive(state, legKey) {
   return ((state?.[legKey]?.assignments?.eclaireur) || []).length > 0;
 }
+
+/* ---------------------------------------------------------------------------
+ * Per-PC long-rest math (deferred-#10b)
+ *
+ * Night is fixed at 10 h. Each watch shift a PC is assigned to costs them
+ * exactly 2 h of sleep regardless of the shift's label text. Required is
+ * a per-PC value (default 8 if absent from state.restRequirements; an
+ * explicit `null` means the PC doesn't need to sleep at all).
+ * ------------------------------------------------------------------------ */
+
+const NIGHT_HOURS = 10;
+const SHIFT_COST_HOURS = 2;
+/** Initial value when a PC is first added to the rest-tracking list via
+ *  the "+ ajouter un personnage" picker. Not a fallback for absent PCs —
+ *  absent means "not tracked", which getRestRequirement signals with
+ *  `undefined` (not 8). */
+export const DEFAULT_REQUIRED_HOURS = 8;
+
+/** Required rest hours for a PC. Returns:
+ *    - a finite non-negative number — tracked, needs that many hours
+ *    - `null` — tracked, no sleep needed
+ *    - `undefined` — NOT tracked (no entry in state.restRequirements)
+ *
+ *  Opt-in semantics: the rest list is empty by default. PCs only appear
+ *  once the user explicitly adds them. */
+export function getRestRequirement(state, actorId) {
+  const map = state?.restRequirements;
+  if (!map || typeof map !== "object") return undefined;
+  if (!(actorId in map)) return undefined;
+  const v = map[actorId];
+  if (v === null) return null;
+  if (typeof v === "number" && Number.isFinite(v) && v >= 0) return v;
+  return undefined; // malformed value → treat as not tracked
+}
+
+/** Available sleep hours this night for a PC, given how many watch shifts
+ *  they're on. Clamped to 0 so 6+ shifts doesn't go negative. */
+export function getAvailableSleep(state, actorId) {
+  const watch = state?.nuit?.watch || [];
+  let shifts = 0;
+  for (const w of watch) {
+    if ((w.actorIds || []).includes(actorId)) shifts++;
+  }
+  return Math.max(0, NIGHT_HOURS - SHIFT_COST_HOURS * shifts);
+}
+
+/** Combined status:
+ *    { tracked: boolean, available, required, sufficient }
+ *  An untracked PC (no entry in restRequirements) has tracked=false,
+ *  available=null, required=null, sufficient=true. Callers should check
+ *  `tracked` first to decide whether to render warnings / recap entries. */
+export function getRestStatus(state, actorId) {
+  const required = getRestRequirement(state, actorId);
+  if (required === undefined) {
+    return { tracked: false, available: null, required: null, sufficient: true };
+  }
+  const available = getAvailableSleep(state, actorId);
+  const sufficient = (required === null) || (available >= required);
+  return { tracked: true, available, required, sufficient };
+}

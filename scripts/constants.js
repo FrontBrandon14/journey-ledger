@@ -204,7 +204,7 @@ export const PHASES = [
   { key: "etape2",      label: "Deuxième étape du voyage",            duration: "6 h",    cost: "1 utilisation d'eau",     width: 290, icon: "fa-solid fa-route" },
   { key: "camp",        label: "Trouver et faire un camp",            duration: "30 min", cost: null,                      width: 320, icon: "fa-solid fa-campground" },
   { key: "soir",        label: "Activité du soir",                    duration: "1 h 30", cost: "2 lb nourriture + 1 eau", width: 320, icon: "fa-solid fa-fire" },
-  { key: "nuit",        label: "Repos pour la nuit",                  duration: "10 h",   cost: null,                      width: 240, icon: "fa-solid fa-moon" },
+  { key: "nuit",        label: "Repos pour la nuit",                  duration: "10 h",   cost: null,                      width: 288, icon: "fa-solid fa-moon" },
 ];
 
 // O(1) phase lookup

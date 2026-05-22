@@ -12,7 +12,7 @@
 
 import { PHASES, TRAVEL_ACTIVITIES, EVENING_ACTIVITIES, TAGS, QUALITIES, TRAP_TYPES } from "./constants.js";
 import { escapeHtml, actorNameSafe, allPCs } from "./helpers.js";
-import { computePCDailyStats } from "./stats.js";
+import { computePCDailyStats, getRestStatus } from "./stats.js";
 import { tripMetrics, fmtNum } from "./trip-metrics.js";
 
 /* ---------------------------------------------------------------------------
@@ -122,7 +122,9 @@ export function buildDayRecapHTML(state) {
     parts.push(matched ? matched[1] : innerHtml);
   }
 
-  // Per-PC fatigue + distrayante summary (display-only — no Apply button).
+  // Per-PC fatigue + distrayante + rest summary (display-only — no Apply
+  // button). deferred-#10b folds rest-insufficient PCs into the same
+  // section so the recap surfaces every cumulative concern in one place.
   const pcs = allPCs();
   const stats = computePCDailyStats(state);
   const flags = [];
@@ -131,14 +133,22 @@ export function buildDayRecapHTML(state) {
     const exh = s.epuisanteCount;
     const disCount = s.distrayanteCount;
     const disPenalty = disCount * 5;
-    if (exh >= 2 || disCount > 0) {
+    // deferred-#10b opt-in: only flag rest issues for PCs the user has
+    // explicitly added to the rest-tracking list. Untracked PCs are
+    // silent in the recap regardless of how many shifts they're on.
+    const rest = getRestStatus(state, pc.id);
+    const undersleep = rest.tracked && !rest.sufficient;
+    if (exh >= 2 || disCount > 0 || undersleep) {
       const exhPart = exh >= 2
         ? ` <span style="color:#a02020">+1 épuisement</span>`
         : (exh === 1 ? ` <em>(1 activité épuisante)</em>` : "");
       const disPart = disCount > 0
         ? ` <em>(-${disPenalty} Perception · ${disCount} distrayante${disCount > 1 ? "s" : ""})</em>`
         : "";
-      flags.push(`<li><strong>${escapeHtml(pc.name)}</strong>${exhPart}${disPart}</li>`);
+      const restPart = undersleep
+        ? ` <span style="color:#a02020">😴 ${rest.available} h de sommeil (besoin ${rest.required} h) — repos long incomplet</span>`
+        : "";
+      flags.push(`<li><strong>${escapeHtml(pc.name)}</strong>${exhPart}${disPart}${restPart}</li>`);
     }
   }
   if (flags.length) {

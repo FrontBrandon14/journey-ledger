@@ -28,7 +28,7 @@ import {
   activityById, activitySkillLabel,
 } from "./constants.js";
 import { allPCs, actorNameSafe, escapeHtml } from "./helpers.js";
-import { computePCDailyStats, distrayanteMalus, isEclaireurActive } from "./stats.js";
+import { computePCDailyStats, distrayanteMalus, isEclaireurActive, getRestStatus, getRestRequirement, DEFAULT_REQUIRED_HOURS } from "./stats.js";
 import { tripMetrics, fmtNum } from "./trip-metrics.js";
 import { openTripEditDialog } from "./trip-dialog.js";
 import { deriveCampProperties, finderQualityLabel } from "./camp-rules.js";
@@ -101,6 +101,8 @@ const MUTATION_TO_SECTIONS = {
   SET_CAMP_CHECK_RESULT:  ["camp", "reveil"],
   SET_CAMP_D6:            ["camp", "reveil"],
   RESET_CAMP_SMART:       ["camp"],
+  SET_REST_REQUIREMENT:    ["nuit"],   // deferred-#10b — updates both the rest list AND the watch-chip warning icons
+  REMOVE_REST_REQUIREMENT: ["nuit"],   // deferred-#10b — same scope; row removal + warning-icon clearance
 };
 
 export class JourneyLedger extends ApplicationV2 {
@@ -123,9 +125,10 @@ export class JourneyLedger extends ApplicationV2 {
       removeWatch:     JourneyLedger.prototype._onRemoveWatch,
       newDay:          JourneyLedger.prototype._onNewDay,
       editTrip:        JourneyLedger.prototype._onEditTrip,
-      rollD6:          JourneyLedger.prototype._onRollD6,
-      resetCampSmart:  JourneyLedger.prototype._onResetCampSmart,
-      postDayRecap:    JourneyLedger.prototype._onPostDayRecap,
+      rollD6:                  JourneyLedger.prototype._onRollD6,
+      resetCampSmart:          JourneyLedger.prototype._onResetCampSmart,
+      postDayRecap:            JourneyLedger.prototype._onPostDayRecap,
+      removeRestRequirement:   JourneyLedger.prototype._onRemoveRestRequirement,
     },
   };
 
@@ -948,8 +951,16 @@ export class JourneyLedger extends ApplicationV2 {
     const rows = (state.nuit.watch || []).map((w, i) => {
       const chips = (w.actorIds || []).map((id) => {
         const a = game.actors.get(id);
+        // deferred-#10b: small red warning on chip if this PC is being
+        // tracked AND is under-rested. Untracked PCs (not in the rest
+        // list) get no warning regardless of how many shifts they're on.
+        // Non-blocking — assignment still goes through either way.
+        const rest = getRestStatus(state, id);
+        const warnIcon = (rest.tracked && !rest.sufficient)
+          ? `<i class="fa-solid fa-triangle-exclamation jl-watch-warn" title="Sommeil insuffisant (${rest.available} h disponibles, ${rest.required} h requises) — repos long incomplet"></i>`
+          : "";
         return `<span class="jl-watch-chip">
-          ${escapeHtml(a?.name ?? "?")}
+          ${warnIcon}${escapeHtml(a?.name ?? "?")}
           <button type="button" class="jl-icon-btn" data-action="removeWatchPC" data-watch-idx="${i}" data-actor-id="${id}" title="Retirer">
             <i class="fa-solid fa-xmark"></i>
           </button>
@@ -979,6 +990,87 @@ export class JourneyLedger extends ApplicationV2 {
             <i class="fa-solid fa-plus"></i> Ajouter un tour
           </button>
         </div>
+        ${this._renderRestRequirements(state, pcs)}
+      </div>`;
+  }
+
+  /* deferred-#10b — "Repos requis" mini-section.
+   *
+   * OPT-IN: the list starts empty. Users add specific PCs via the
+   * "+ ajouter un personnage" picker. Adding dispatches SET_REST_REQUIREMENT
+   * with the default 8 h; removing dispatches REMOVE_REST_REQUIREMENT.
+   * Untracked PCs are invisible here, don't warn on watch chips, and are
+   * skipped in the day recap (chat.js checks status.tracked).
+   *
+   * Each tracked row: name · number input (or disabled when "Aucun") ·
+   * "Aucun" checkbox · ✕ remove button · live status line. Watch
+   * assignments anywhere in the column update each tracked PC's status
+   * via the nuit-column re-render (ADD_WATCH_PC etc. include "nuit"). */
+  _renderRestRequirements(state, pcs) {
+    if (!pcs.length) return "";
+
+    // Partition PCs into tracked (already in restRequirements) vs. not.
+    const tracked = pcs.filter((p) => getRestStatus(state, p.id).tracked);
+    const untracked = pcs.filter((p) => !getRestStatus(state, p.id).tracked);
+
+    const rows = tracked.map((pc) => {
+      const required = getRestRequirement(state, pc.id);
+      const status = getRestStatus(state, pc.id);
+      const isNone = required === null;
+      // When "Aucun" is checked, the disabled input still needs a value
+      // so unchecking has a sensible number to revert to.
+      const hoursDisplay = isNone ? DEFAULT_REQUIRED_HOURS : required;
+
+      let statusText, statusClass;
+      if (status.required === null) {
+        statusText = "Aucun repos requis ✓";
+        statusClass = "jl-rest-status-ok";
+      } else if (status.sufficient) {
+        statusText = `✓ ${status.available} h de repos · suffisant`;
+        statusClass = "jl-rest-status-ok";
+      } else {
+        statusText = `⚠ ${status.available} h de repos · insuffisant (besoin de ${status.required} h)`;
+        statusClass = "jl-rest-status-warn";
+      }
+
+      return `
+        <div class="jl-rest-row" data-rest-actor="${escapeHtml(pc.id)}">
+          <div class="jl-rest-row-main">
+            <span class="jl-rest-name" title="${escapeHtml(pc.name)}">${escapeHtml(pc.name)}</span>
+            <input type="number" class="jl-rest-input" data-rest-hours
+              value="${hoursDisplay}" min="0" max="24" step="1"
+              ${isNone ? "disabled" : ""}/>
+            <label class="jl-rest-none-toggle" title="Cette créature n'a pas besoin de dormir">
+              <input type="checkbox" data-rest-none ${isNone ? "checked" : ""}/> Aucun
+            </label>
+            <button type="button" class="jl-icon-btn jl-rest-remove"
+              data-action="removeRestRequirement" data-actor-id="${escapeHtml(pc.id)}"
+              title="Retirer du suivi">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+          <div class="jl-rest-status ${statusClass}">${statusText}</div>
+        </div>`;
+    }).join("");
+
+    // "+ ajouter un personnage" picker — only PCs not already tracked.
+    const addPicker = untracked.length
+      ? `<div class="jl-add-picker" style="margin-top:6px;">
+           <select data-rest-add>
+             <option value="">+ ajouter un personnage</option>
+             ${untracked.map((p) => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)}</option>`).join("")}
+           </select>
+         </div>`
+      : "";
+
+    const listBody = rows || `<div class="jl-finder-empty-line"><em>Aucun personnage suivi.</em></div>`;
+
+    return `
+      <div class="jl-mini-section">
+        <h4><i class="fa-solid fa-bed"></i> Repos requis</h4>
+        <p class="jl-finder-note" style="margin-top:0;"><i class="fa-solid fa-circle-info"></i> Nuit = 10 h. Chaque tour de garde coûte 2 h de sommeil.</p>
+        <div class="jl-rest-list">${listBody}</div>
+        ${addPicker}
       </div>`;
   }
 
@@ -1117,6 +1209,47 @@ export class JourneyLedger extends ApplicationV2 {
         }
       });
     });
+
+    // deferred-#10b — per-PC rest requirement inputs (number) + "Aucun"
+    // checkboxes. Both controls dispatch SET_REST_REQUIREMENT; the
+    // checkbox passes null when checked, the input's current value when
+    // unchecked (so unchecking gracefully restores a non-null requirement
+    // without inventing a value).
+    root.querySelectorAll("[data-rest-hours]").forEach((el) => {
+      el.addEventListener("change", () => {
+        const row = el.closest("[data-rest-actor]");
+        const actorId = row?.dataset.restActor;
+        if (!actorId) return;
+        const hours = Number(el.value);
+        if (!Number.isFinite(hours) || hours < 0) return;
+        sync.mutate("SET_REST_REQUIREMENT", { actorId, hours: Math.floor(hours) });
+      });
+    });
+    root.querySelectorAll("[data-rest-none]").forEach((el) => {
+      el.addEventListener("change", () => {
+        const row = el.closest("[data-rest-actor]");
+        const actorId = row?.dataset.restActor;
+        if (!actorId) return;
+        if (el.checked) {
+          sync.mutate("SET_REST_REQUIREMENT", { actorId, hours: null });
+        } else {
+          const input = row.querySelector("[data-rest-hours]");
+          const hours = Math.max(0, Math.floor(Number(input?.value) || DEFAULT_REQUIRED_HOURS));
+          sync.mutate("SET_REST_REQUIREMENT", { actorId, hours });
+        }
+      });
+    });
+
+    // deferred-#10b — "+ ajouter un personnage" picker. Selecting a PC
+    // dispatches SET_REST_REQUIREMENT with the default initial hours; the
+    // PC then appears in the tracked list on next re-render.
+    root.querySelectorAll("[data-rest-add]").forEach((el) => {
+      el.addEventListener("change", () => {
+        const actorId = el.value;
+        if (!actorId) return;
+        sync.mutate("SET_REST_REQUIREMENT", { actorId, hours: DEFAULT_REQUIRED_HOURS });
+      });
+    });
   }
 
   /* ---------------------------------------------------------------------------
@@ -1188,6 +1321,15 @@ export class JourneyLedger extends ApplicationV2 {
 
   _onResetCampSmart() {
     sync.mutate("RESET_CAMP_SMART", {});
+  }
+
+  /* deferred-#10b — remove a PC from rest tracking. The entry is deleted
+   * from state.restRequirements; the row disappears on next nuit re-render
+   * and any watch-chip warning icon for this PC vanishes too. */
+  _onRemoveRestRequirement(event, target) {
+    const actorId = target.dataset.actorId;
+    if (!actorId) return;
+    sync.mutate("REMOVE_REST_REQUIREMENT", { actorId });
   }
 
   /* Phase 4 — day-recap publish. Any user can fire; the chat post is

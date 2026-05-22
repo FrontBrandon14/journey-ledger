@@ -15,7 +15,7 @@ import { QUALITIES, DEFAULT_SHIFTS } from "./constants.js";
 export const SCHEMA_VERSION = "1.0.0";
 
 /** Build a fresh, empty state matching §3's schema. Called on a cold install,
- *  on "Nouveau jour" (with trip preserved via createNewDayPreservingTrip),
+ *  on "Nouveau jour" (with cross-day data preserved via createNewDayPreserving),
  *  and as the default value for the world Setting. */
 export function createDefaultState() {
   const emptyPhase = () => ({ assignments: {} });
@@ -62,14 +62,33 @@ export function createDefaultState() {
       ...emptyPhase(),
       watch: DEFAULT_SHIFTS.map((s) => ({ shift: s, actorIds: [] })),
     },
+
+    // Per-PC long-rest hour requirements (deferred-#10b). Sparse map:
+    // key = actorId, value = number ≥ 0 (hours) or null (no sleep needed).
+    // Missing keys default to 8 — we don't pre-write every PC. Rest math
+    // (available = 10 − 2 × shifts; sufficient if available ≥ required or
+    // required is null) lives in stats.js so it stays a pure function of
+    // state and is reusable from chat.js for the day recap.
+    restRequirements: {},
   };
 }
 
-/** Build a fresh day-state but preserve the cross-day trip progress. The
- *  trip is shallow-cloned + field-normalized so the new state's trip is
- *  independent of the previous one. */
-export function createNewDayPreservingTrip(prevTrip) {
+/** Build a fresh day-state but preserve everything that's *cross-day*:
+ *    - `trip`           — long-trip progress, milestones, reachedAt stamps
+ *    - `restRequirements` — per-PC rest traits (elf trance = 4 h, etc.)
+ *
+ *  All preserved data is shallow-cloned and field-normalized so the new
+ *  state owns its own references — no shared mutation across days.
+ *
+ *  Renamed from createNewDayPreservingTrip (now accepts the full previous
+ *  state, not just prevTrip) so additions stay one-function/one-caller
+ *  instead of growing parallel preserve-X functions. */
+export function createNewDayPreserving(prevState) {
   const fresh = createDefaultState();
+  if (!prevState || typeof prevState !== "object") return fresh;
+
+  // Trip (per-trip data, persists until "Réinitialiser le voyage")
+  const prevTrip = prevState.trip;
   if (prevTrip && typeof prevTrip === "object") {
     const ms = Array.isArray(prevTrip.milestones)
       ? prevTrip.milestones.map((m) => ({
@@ -89,6 +108,14 @@ export function createNewDayPreservingTrip(prevTrip) {
       elapsedHours: Math.max(0, Number(prevTrip.elapsedHours) || 0),
     };
   }
+
+  // Rest requirements (per-PC traits — elf, vampire, construct). These
+  // describe the PC, not the day, so they survive Nouveau jour. Shallow
+  // clone of the object so we don't share the reference with prevState.
+  if (prevState.restRequirements && typeof prevState.restRequirements === "object") {
+    fresh.restRequirements = { ...prevState.restRequirements };
+  }
+
   return fresh;
 }
 
