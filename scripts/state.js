@@ -123,6 +123,14 @@ export function createNewDayPreserving(prevState) {
     fresh.restRequirements = { ...prevState.restRequirements };
   }
 
+  // v1.1.1 fix — participants persist across days. The party traveling
+  // together doesn't change day-to-day; only the GM explicitly altering
+  // the list should affect it. Without this clone, Nouveau jour was
+  // wiping the list (regression from v1.1.0).
+  if (Array.isArray(prevState.participants)) {
+    fresh.participants = [...prevState.participants];
+  }
+
   return fresh;
 }
 

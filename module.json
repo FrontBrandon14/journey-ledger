@@ -2,7 +2,7 @@
   "id": "journey-ledger",
   "title": "Journey Ledger",
   "description": "Panorama-style 'day of travel' tracker for D&D 5e. Real-time multi-user sync via socketlib. French UI, 8-phase day, milestone-based trip progress, camp + watch schedule.",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "compatibility": {
     "minimum": "13",
     "verified": "13.351",

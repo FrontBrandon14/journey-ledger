@@ -13,11 +13,12 @@
  * Crafting integration
  * ======================================================================= */
 
-// Skill key from the "5e - Custom Abilities & Skills" module. If your install
-// uses a different key, change it here — the `getSkillLabel` helper reads
-// CONFIG.DND5E.skills live, so the activity-card label tracks the user-defined
-// custom-skill label automatically.
+// Skill keys from the "5e - Custom Abilities & Skills" module. If your
+// install uses different keys, change them here — the `getSkillLabel`
+// helper reads CONFIG.DND5E.skills live, so the activity-card labels
+// track the user-defined custom-skill labels automatically.
 export const CRAFTING_SKILL_KEY = "cra";
+export const COOKING_SKILL_KEY  = "coo";   // v1.1.1 — Cuisiner / Préserver
 
 /* ===========================================================================
  * Speed / Distance / Time unit tables (calculator dialog)
@@ -172,6 +173,14 @@ export const EVENING_ACTIVITIES = [
   { key: "trouverEauSoir", label: "Trouver de l'eau",       tags: ["dangereuse"],
     skill: "sur",
     desc: "Comme l'étape, mais de nuit." },
+  // v1.1.1 — food-prep activities. Live between foraging and magic in the
+  // evening flow: forage / hunt → cook → preserve → enchant / harmonize.
+  { key: "cuisiner",      label: "Cuisiner un repas",       tags: ["ciblee", "distrayante"],
+    skill: COOKING_SKILL_KEY,
+    desc: "Vous préparez un véritable repas pour le groupe : ingrédients réunis, feu maîtrisé, plats coordonnés. Un assistant peut aider à hacher, mélanger et servir." },
+  { key: "preserver",     label: "Préserver les provisions", tags: ["ciblee", "epuisante", "distrayante"],
+    skillChoice: [COOKING_SKILL_KEY, "sur"],
+    desc: "Vous traitez la nourriture chassée ou récoltée pour la conserver : fumage, salaison, séchage, congélation, fermentation ou autre méthode adaptée à la cargaison." },
   // §11 invented narrative (macro had only DC text — no narrative half).
   { key: "identifier",    label: "Identifier un objet magique", tags: ["epuisante"],
     skill: "arc",
@@ -226,6 +235,7 @@ export const SKILL_LABELS_FR = {
   prf: "Représentation", per: "Persuasion", rel: "Religion",
   slt: "Escamotage", ste: "Discrétion", sur: "Survie",
   [CRAFTING_SKILL_KEY]: "Crafting",
+  [COOKING_SKILL_KEY]:  "Cooking",
 };
 
 export const ABILITY_LABELS_FR = {
