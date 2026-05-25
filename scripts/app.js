@@ -27,7 +27,8 @@ import {
   TRAVEL_ACTIVITIES, EVENING_ACTIVITIES, QUALITIES, TRAP_TYPES,
   activityById, activitySkillLabel,
 } from "./constants.js";
-import { allPCs, actorNameSafe, escapeHtml } from "./helpers.js";
+import { getParticipants, actorNameSafe, escapeHtml } from "./helpers.js";
+import { openParticipantsDialog } from "./participants-dialog.js";
 import { computePCDailyStats, distrayanteMalus, isEclaireurActive, getRestStatus, getRestRequirement, DEFAULT_REQUIRED_HOURS } from "./stats.js";
 import { tripMetrics, fmtNum } from "./trip-metrics.js";
 import { openTripEditDialog } from "./trip-dialog.js";
@@ -103,6 +104,10 @@ const MUTATION_TO_SECTIONS = {
   RESET_CAMP_SMART:       ["camp"],
   SET_REST_REQUIREMENT:    ["nuit"],   // deferred-#10b — updates both the rest list AND the watch-chip warning icons
   REMOVE_REST_REQUIREMENT: ["nuit"],   // deferred-#10b — same scope; row removal + warning-icon clearance
+  // v1.1.0 — GM-managed participant list. Affects activity pickers, watch
+  // chips, camp finder grouping, roster, and rest list — easier to full-
+  // render than enumerate every affected section.
+  SET_PARTICIPANTS:        "all",
 };
 
 export class JourneyLedger extends ApplicationV2 {
@@ -129,6 +134,7 @@ export class JourneyLedger extends ApplicationV2 {
       resetCampSmart:          JourneyLedger.prototype._onResetCampSmart,
       postDayRecap:            JourneyLedger.prototype._onPostDayRecap,
       removeRestRequirement:   JourneyLedger.prototype._onRemoveRestRequirement,
+      openParticipants:        JourneyLedger.prototype._onOpenParticipants,
     },
   };
 
@@ -239,7 +245,7 @@ export class JourneyLedger extends ApplicationV2 {
       return `<div style="padding:24px;text-align:center;">Chargement…</div>`;
     }
     const state = sync.getState();
-    const pcs = allPCs();
+    const pcs = getParticipants(state);
     const stats = computePCDailyStats(state);
     return this._buildHTML(state, pcs, stats);
   }
@@ -354,7 +360,7 @@ export class JourneyLedger extends ApplicationV2 {
     // Compute new HTML
     const state = sync.getState();
     if (!state) return;
-    const pcs = allPCs();
+    const pcs = getParticipants(state);
     const stats = computePCDailyStats(state);
     const newHtml = this._renderSection(name, state, pcs, stats);
     if (!newHtml) return;
@@ -550,6 +556,10 @@ export class JourneyLedger extends ApplicationV2 {
         </div>
         <div class="jl-actions">
           ${noGMHtml}
+          ${game.user?.isGM ? `
+            <button type="button" class="jl-btn jl-ghost" data-action="openParticipants" title="Gérer les participants du voyage (PJ, PNJ, véhicules) — GM uniquement">
+              <i class="fa-solid fa-users"></i> Participants
+            </button>` : ""}
           <button type="button" class="jl-btn jl-ghost" data-action="newDay" title="Réinitialiser à un nouveau jour (voyage conservé)">
             <i class="fa-solid fa-rotate-left"></i> Nouveau jour
           </button>
@@ -1347,6 +1357,22 @@ export class JourneyLedger extends ApplicationV2 {
     } catch (e) {
       console.error("[Journey Ledger] postDayRecap failed:", e);
       ui.notifications?.error?.("Échec de la publication du récap. Voir la console.");
+    }
+  }
+
+  /* v1.1.0 — Participants management. GM-only at the trigger level (the
+   * button in _renderBanner is only rendered for game.user.isGM). The
+   * dialog itself is permissive, but it's only opened via this handler. */
+  async _onOpenParticipants() {
+    if (!game.user?.isGM) {
+      ui.notifications?.warn?.("Seul le GM peut gérer la liste des participants.");
+      return;
+    }
+    try {
+      await openParticipantsDialog();
+    } catch (e) {
+      console.error("[Journey Ledger] openParticipantsDialog failed:", e);
+      ui.notifications?.error?.("Échec de l'ouverture du dialogue. Voir la console.");
     }
   }
 }

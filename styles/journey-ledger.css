@@ -1436,3 +1436,94 @@
         font-size: 0.85rem;
         cursor: help;
       }
+
+      /* ---------------------------------------------------------------------------
+       * v1.1.0 — Participants dialog (GM-managed list of journey actors).
+       *
+       * Reuses the existing parchment palette tokens. Three collapsible
+       * <details> groups (PJ / PNJ / Véhicule); empty groups are omitted by
+       * the renderer so the section count stays compact for small worlds.
+       * ------------------------------------------------------------------ */
+      .jl-pp-dialog {
+        font-family: "Cinzel", serif;
+        color: #2b1d0e;
+        padding: 4px 2px 0 2px;
+      }
+      .jl-pp-dialog .jl-pp-intro {
+        margin: 0 0 10px 0;
+        font-size: 0.86rem;
+        font-style: italic;
+        opacity: 0.85;
+      }
+      .jl-pp-dialog .jl-pp-empty {
+        margin: 8px 0;
+        text-align: center;
+        font-size: 0.86rem;
+        opacity: 0.7;
+      }
+      .jl-pp-dialog .jl-pp-group {
+        border: 1px solid #6b4f2a;
+        border-radius: 4px;
+        background: rgba(245,235,210,0.45);
+        margin-bottom: 8px;
+        padding: 4px 8px;
+      }
+      .jl-pp-dialog .jl-pp-group > summary {
+        font-family: "IM Fell English SC", serif;
+        font-size: 0.95rem;
+        color: #3e2a17;
+        cursor: pointer;
+        list-style: none;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 2px 0;
+        letter-spacing: 0.02em;
+      }
+      .jl-pp-dialog .jl-pp-group > summary::-webkit-details-marker { display: none; }
+      .jl-pp-dialog .jl-pp-group > summary::before {
+        content: "▸";
+        color: #c9a227;
+        font-size: 0.85rem;
+        transition: transform 150ms ease;
+      }
+      .jl-pp-dialog .jl-pp-group[open] > summary::before { transform: rotate(90deg); }
+      .jl-pp-dialog .jl-pp-count {
+        font-size: 0.78rem;
+        font-family: "Cinzel", serif;
+        opacity: 0.7;
+        letter-spacing: 0;
+      }
+      .jl-pp-dialog .jl-pp-group-body {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 2px 10px;
+        padding: 4px 0 4px 4px;
+      }
+      .jl-pp-dialog .jl-pp-row {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.88rem;
+        padding: 2px 0;
+        cursor: pointer;
+      }
+      .jl-pp-dialog .jl-pp-row input[type="checkbox"] {
+        accent-color: #5a3e24;
+      }
+      .jl-pp-dialog .jl-pp-name {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .jl-pp-dialog .jl-pp-tools {
+        display: flex;
+        gap: 6px;
+        margin-top: 8px;
+        padding-top: 6px;
+        border-top: 1px dashed rgba(107,79,42,0.35);
+      }
+      .jl-pp-dialog .jl-pp-tools .jl-btn {
+        font-size: 0.82rem;
+        padding: 3px 10px;
+      }

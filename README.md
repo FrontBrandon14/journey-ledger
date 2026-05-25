@@ -8,7 +8,8 @@ Panorama-style "day of travel" tracker for D&D 5e in Foundry VTT v13, with real-
 - **11 travel activities + 12 evening activities** with the four-tag system (Ciblée 🔗, Dangereuse ☠️, Épuisante 💤, Distrayante 🔥) and inline skill labels
 - **Per-leg milestone trip** — animated progress bar with milestone flags, current-leg subtitle, speed/distance/time calculator, automatic milestone-crossed chat cards
 - **Smart camp panel** — enter your check result + d6, properties auto-assign with improvement order following the d6 rule (1–2 Confortable / 3–4 Défendable / 5–6 Caché first)
-- **Watch shift scheduler** — assignable PCs per shift
+- **GM-managed participant list** — Add Player Characters, Non-Player Characters, *and* Vehicle actors to the journey via the **Participants** button in the banner (GM-only). NPC companions, retainers, summoned creatures, mounts, and travelling wagons all appear in the activity pickers, watch chips, camp finder, roster, day recap, and rest list. Only the GM can edit the list; everyone else sees the result.
+- **Watch shift scheduler** — assignable participants per shift
 - **Per-PC long-rest tracking** — opt-in list. Add a PC, set required hours (default 8, custom number, or "Aucun" for constructs / vampires). Each watch shift costs 2 h of sleep; under-rested PCs flag with a red icon on their watch chip and in the day recap. Persists across "Nouveau jour" — rest needs are per-PC traits, not per-day state.
 - **Day recap publishing** — one button posts a full chat recap; any player can publish
 - **Real-time multi-user sync** — any connected user can edit any field; every other client sees the change instantly with no GM-relay bottleneck and no window close/reopen

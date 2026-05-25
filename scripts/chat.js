@@ -11,7 +11,7 @@
  *     regardless of which client triggered the SET_TRIP. */
 
 import { PHASES, TRAVEL_ACTIVITIES, EVENING_ACTIVITIES, TAGS, QUALITIES, TRAP_TYPES } from "./constants.js";
-import { escapeHtml, actorNameSafe, allPCs } from "./helpers.js";
+import { escapeHtml, actorNameSafe, getParticipants } from "./helpers.js";
 import { computePCDailyStats, getRestStatus } from "./stats.js";
 import { tripMetrics, fmtNum } from "./trip-metrics.js";
 
@@ -125,7 +125,7 @@ export function buildDayRecapHTML(state) {
   // Per-PC fatigue + distrayante + rest summary (display-only — no Apply
   // button). deferred-#10b folds rest-insufficient PCs into the same
   // section so the recap surfaces every cumulative concern in one place.
-  const pcs = allPCs();
+  const pcs = getParticipants(state);
   const stats = computePCDailyStats(state);
   const flags = [];
   for (const pc of pcs) {

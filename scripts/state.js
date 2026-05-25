@@ -70,6 +70,13 @@ export function createDefaultState() {
     // required is null) lives in stats.js so it stays a pure function of
     // state and is reusable from chat.js for the day recap.
     restRequirements: {},
+
+    // v1.1.0 — GM-managed journey participant list. Array of actor ids
+    // explicitly added to the journey (PC, NPC, or Vehicle types). The
+    // UI reads from this list, not game.actors directly. Default empty;
+    // migration in normalizeState auto-populates from PC actors when
+    // upgrading a pre-v1.1.0 stored state. See DESIGN.md §3.
+    participants: [],
   };
 }
 
@@ -122,10 +129,39 @@ export function createNewDayPreserving(prevState) {
 /** Field-fill a loaded snapshot so partial / older state objects work. Foundry
  *  may hand us anything that was previously written to the setting, including
  *  empty {} from a fresh world; mergeObject with the default tree fills all
- *  missing fields. */
+ *  missing fields. Schema migrations live here too. */
 export function normalizeState(raw) {
   if (!raw || typeof raw !== "object") return createDefaultState();
   // foundry.utils.mergeObject deep-merges into a new object. Default tree
   // first, then overlay the raw — raw's leaf values win for shared keys.
-  return foundry.utils.mergeObject(createDefaultState(), raw, { inplace: false });
+  const merged = foundry.utils.mergeObject(createDefaultState(), raw, { inplace: false });
+
+  // v1.1.0 migration — auto-populate participants from PC-type actors
+  // when the stored state predates the participants field. Detected by
+  // the field being literally absent from the raw object (mergeObject
+  // would have filled it with the default empty array, which is then
+  // indistinguishable from "GM explicitly cleared the list"). Once any
+  // GM commit lands, the field is present and migration stops running.
+  if (!("participants" in raw)) {
+    merged.participants = _autoDetectPCActorIds();
+  } else if (!Array.isArray(raw.participants)) {
+    // Malformed (shouldn't happen, but be defensive)
+    merged.participants = [];
+  }
+
+  return merged;
+}
+
+/** Returns the actor ids of every PC ("character" type) currently visible
+ *  to this client. Used by the v1.1.0 migration to seed the participant
+ *  list. Players and the GM all see PC actors (Foundry default permissions),
+ *  so different clients converge on the same migration result. */
+function _autoDetectPCActorIds() {
+  const out = [];
+  try {
+    for (const actor of (game?.actors ?? [])) {
+      if (actor.type === "character") out.push(actor.id);
+    }
+  } catch { /* game.actors not ready — return empty */ }
+  return out;
 }

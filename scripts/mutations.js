@@ -241,6 +241,33 @@ function applyRemoveRestRequirement(state, { actorId }) {
   }
 }
 
+/* ---------------------------------------------------------------------------
+ * v1.1.0 — GM-managed participant list
+ *
+ * SET_PARTICIPANTS bulk-replaces state.participants. Save-on-close from the
+ * Participants dialog — the dialog accumulates changes locally, then fires
+ * one mutation on Save. Filters out non-string entries defensively.
+ *
+ * Note: existing assignments to actors removed from the list are NOT
+ * cleaned up here. They become orphaned (still in state, but no longer
+ * surfaced in pickers/chips/recap). Re-adding the actor restores
+ * visibility. Documented in §3 — lossless by design, fixable in a later
+ * release if it becomes a pain point.
+ * ------------------------------------------------------------------------ */
+
+function applySetParticipants(state, { participants }) {
+  if (!Array.isArray(participants)) return;
+  // Dedup + filter to truthy strings only; don't trust the caller.
+  const seen = new Set();
+  const out = [];
+  for (const id of participants) {
+    if (typeof id !== "string" || !id || seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+  }
+  state.participants = out;
+}
+
 /* Defensive: ensure `state.camp` has all the fields the handlers expect.
  * Older snapshots (or partial state from a broadcast race) may be missing
  * `smartCheck` etc. — we don't want a mutation to crash on undefined paths. */
@@ -292,6 +319,8 @@ const HANDLERS = {
   // deferred-#10b
   SET_REST_REQUIREMENT:    applySetRestRequirement,
   REMOVE_REST_REQUIREMENT: applyRemoveRestRequirement,
+  // v1.1.0 — GM-managed participants
+  SET_PARTICIPANTS:        applySetParticipants,
 };
 
 export const MUTATION_TYPES = Object.freeze(Object.keys(HANDLERS));
